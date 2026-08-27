@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import csv
+import http.client
 import os
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
 
 
 class ConversionError(ValueError):
@@ -47,13 +47,17 @@ SOURCE_DEFINITIONS = (
 
 
 def convert_url_regex(expression: str) -> str:
-    if not expression.startswith(URL_REGEX_PREFIX) or not expression.endswith(URL_REGEX_SUFFIX):
+    if not expression.startswith(URL_REGEX_PREFIX) or not expression.endswith(
+        URL_REGEX_SUFFIX
+    ):
         raise ConversionError(f"unsupported URL-REGEX expression: {expression}")
     host_regex = expression[len(URL_REGEX_PREFIX) : -len(URL_REGEX_SUFFIX)]
-    if r"\/" in host_regex:
-        raise ConversionError("path matching in URL-REGEX is unsupported")
     if not host_regex:
         raise ConversionError("unsupported URL-REGEX expression: empty host")
+    if r"\/" in host_regex:
+        raise ConversionError("path matching in URL-REGEX is unsupported")
+    if any(marker in host_regex for marker in (":", r"\?", r"\#")):
+        raise ConversionError("non-canonical URL-REGEX expression")
     return f"DOMAIN-REGEX,^{host_regex}$"
 
 
@@ -80,7 +84,9 @@ def convert_module(text: str, expected_policy: str) -> str:
         rule_type = fields[0].strip()
         policy = fields[-1].strip()
         if policy != expected_policy:
-            raise ConversionError(f"unexpected policy {policy!r}; expected {expected_policy}")
+            raise ConversionError(
+                f"unexpected policy {policy!r}; expected {expected_policy}"
+            )
 
         if rule_type == "URL-REGEX":
             rules.append(convert_url_regex(fields[1].strip()))
@@ -97,13 +103,27 @@ def convert_module(text: str, expected_policy: str) -> str:
 
 
 def _download_text(url: str) -> str:
-    if urlsplit(url).scheme != "https":
+    parts = urlsplit(url)
+    if parts.scheme != "https" or not parts.netloc:
         raise ConversionError(f"unsupported download URL: {url}")
+    connection = http.client.HTTPSConnection(
+        parts.netloc, timeout=DOWNLOAD_TIMEOUT_SECONDS
+    )
     try:
-        with urlopen(Request(url), timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
-            return response.read().decode("utf-8")
+        path = parts.path or "/"
+        if parts.query:
+            path = f"{path}?{parts.query}"
+        connection.request("GET", path, headers={"User-Agent": "proxy-rules"})
+        response = connection.getresponse()
+        if response.status != 200:
+            raise ConversionError(f"download failed: HTTP {response.status}")
+        return response.read().decode("utf-8")
     except Exception as exc:  # pragma: no cover - surfaced in CLI only
+        if isinstance(exc, ConversionError):
+            raise
         raise ConversionError(f"download failed: {exc}") from exc
+    finally:
+        connection.close()
 
 
 def _write_text_if_changed(path: Path, text: str) -> bool:

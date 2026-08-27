@@ -30,13 +30,25 @@ foo=bar
 
     def test_converts_host_only_url_regex(self):
         self.assertEqual(
-            convert_url_regex(r'^https?:\/\/(.*\.)?example\.com.*$'),
-            r'DOMAIN-REGEX,^(.*\.)?example\.com$',
+            convert_url_regex(r"^https?:\/\/(.*\.)?example\.com.*$"),
+            r"DOMAIN-REGEX,^(.*\.)?example\.com$",
         )
 
     def test_rejects_path_url_regex(self):
         with self.assertRaisesRegex(ConversionError, "path"):
-            convert_url_regex(r'^https?:\/\/example\.com\/private.*$')
+            convert_url_regex(r"^https?:\/\/example\.com\/private.*$")
+
+    def test_rejects_port_url_regex(self):
+        with self.assertRaisesRegex(ConversionError, "canonical"):
+            convert_url_regex(r"^https?:\/\/example\.com:443.*$")
+
+    def test_rejects_query_url_regex(self):
+        with self.assertRaisesRegex(ConversionError, "canonical"):
+            convert_url_regex(r"^https?:\/\/example\.com\?foo.*$")
+
+    def test_rejects_fragment_url_regex(self):
+        with self.assertRaisesRegex(ConversionError, "canonical"):
+            convert_url_regex(r"^https?:\/\/example\.com\#frag.*$")
 
     def test_rejects_policy_mismatch(self):
         with self.assertRaisesRegex(ConversionError, "expected DIRECT"):
@@ -60,7 +72,11 @@ URL-REGEX,"^https?:\\/\\/(.*\\.)?example\\.com.*$",DIRECT
             convert_module("[General]\nfoo=bar\n", "DIRECT")
 
     def test_keeps_trailing_newline_deterministic(self):
-        self.assertTrue(convert_module("[Rule]\nDOMAIN,example.com,DIRECT\n", "DIRECT").endswith("\n"))
+        self.assertTrue(
+            convert_module("[Rule]\nDOMAIN,example.com,DIRECT\n", "DIRECT").endswith(
+                "\n"
+            )
+        )
 
 
 if __name__ == "__main__":
