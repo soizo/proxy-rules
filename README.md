@@ -12,6 +12,7 @@ Daily-updated Mihomo rule providers converted from three Shadowrocket modules fo
 
 - Shadowrocket rewrite, MITM, and script sections.
 - Non-`[Rule]` sections, unknown rule types, and policy mismatches.
+- Shadowrocket `USER-AGENT` rules are omitted with a deterministic CLI warning because Mihomo classical providers cannot represent them.
 - Path-aware `URL-REGEX` rules that cannot be represented as Mihomo routing rules.
 
 ## Local commands

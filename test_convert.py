@@ -1,5 +1,10 @@
+import io
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+from unittest.mock import patch
 
+import convert as convert_mod
 from convert import ConversionError, convert_module, convert_url_regex
 
 
@@ -38,6 +43,10 @@ foo=bar
         with self.assertRaisesRegex(ConversionError, "path"):
             convert_url_regex(r"^https?:\/\/example\.com\/private.*$")
 
+    def test_rejects_raw_path_url_regex(self):
+        with self.assertRaisesRegex(ConversionError, "path"):
+            convert_url_regex(r"^https?:\/\/example\.com/private.*$")
+
     def test_rejects_port_url_regex(self):
         with self.assertRaisesRegex(ConversionError, "canonical"):
             convert_url_regex(r"^https?:\/\/example\.com:443.*$")
@@ -58,6 +67,40 @@ foo=bar
         with self.assertRaisesRegex(ConversionError, "unsupported"):
             convert_module("[Rule]\nUNKNOWN,example.com,DIRECT\n", "DIRECT")
 
+    def test_omits_user_agent_rules(self):
+        module = """[Rule]
+USER-AGENT,Shadowrocket,DIRECT
+DOMAIN,example.com,DIRECT
+"""
+        self.assertEqual(convert_module(module, "DIRECT"), "DOMAIN,example.com\n")
+
+    def test_main_warns_about_skipped_user_agent_rules(self):
+        module = """[Rule]
+USER-AGENT,Shadowrocket,DIRECT
+DOMAIN,example.com,DIRECT
+"""
+        captured = {}
+
+        def fake_write(path, text):
+            captured["path"] = path
+            captured["text"] = text
+            return True
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with patch.object(
+            convert_mod,
+            "SOURCE_DEFINITIONS",
+            (("sample", "DIRECT", "https://example.test/sample.module", Path("rules/sample.txt")),),
+        ), patch.object(convert_mod, "_download_text", return_value=module), patch.object(
+            convert_mod, "_write_text_if_changed", side_effect=fake_write
+        ), redirect_stdout(stdout), redirect_stderr(stderr):
+            self.assertEqual(convert_mod.main(), 0)
+
+        self.assertEqual(captured["text"], "DOMAIN,example.com\n")
+        self.assertIn("sample: skipped 1 USER-AGENT rules", stderr.getvalue())
+        self.assertIn("sample: 1 rules (updated) -> rules/sample.txt", stdout.getvalue())
+
     def test_preserves_quoted_regex_commas(self):
         module = """[Rule]
 URL-REGEX,"^https?:\\/\\/(.*\\.)?example\\.com.*$",DIRECT
@@ -70,6 +113,10 @@ URL-REGEX,"^https?:\\/\\/(.*\\.)?example\\.com.*$",DIRECT
     def test_rejects_missing_rule_section(self):
         with self.assertRaisesRegex(ConversionError, "Rule"):
             convert_module("[General]\nfoo=bar\n", "DIRECT")
+
+    def test_rejects_empty_rule_section(self):
+        with self.assertRaisesRegex(ConversionError, "zero rules"):
+            convert_module("[Rule]\n", "DIRECT")
 
     def test_keeps_trailing_newline_deterministic(self):
         self.assertTrue(

@@ -15424,7 +15424,6 @@ DOMAIN-SUFFIX,google.ml
 DOMAIN-SUFFIX,sexxx8.xyz
 DOMAIN-SUFFIX,11jav.com
 DOMAIN-SUFFIX,gjczz.com
-USER-AGENT,TikTok*
 DOMAIN-SUFFIX,appcenter.ms
 DOMAIN-SUFFIX,tubxporn.com
 DOMAIN-SUFFIX,ippstatic.com

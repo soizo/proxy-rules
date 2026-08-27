@@ -18,8 +18,9 @@ SUPPORTED_CLASSICAL_RULE_TYPES = {
     "DOMAIN-SUFFIX",
     "IP-CIDR",
     "URL-REGEX",
-    "USER-AGENT",
 }
+
+UNREPRESENTABLE_RULE_TYPES = {"USER-AGENT"}
 
 URL_REGEX_PREFIX = r"^https?:\/\/"
 URL_REGEX_SUFFIX = r".*$"
@@ -54,15 +55,16 @@ def convert_url_regex(expression: str) -> str:
     host_regex = expression[len(URL_REGEX_PREFIX) : -len(URL_REGEX_SUFFIX)]
     if not host_regex:
         raise ConversionError("unsupported URL-REGEX expression: empty host")
-    if r"\/" in host_regex:
+    if "/" in host_regex:
         raise ConversionError("path matching in URL-REGEX is unsupported")
     if any(marker in host_regex for marker in (":", r"\?", r"\#")):
         raise ConversionError("non-canonical URL-REGEX expression")
     return f"DOMAIN-REGEX,^{host_regex}$"
 
 
-def convert_module(text: str, expected_policy: str) -> str:
+def _convert_module_with_stats(text: str, expected_policy: str) -> tuple[str, int]:
     rules: list[str] = []
+    skipped_user_agent_rules = 0
     in_rule_section = False
     saw_rule_section = False
 
@@ -88,6 +90,9 @@ def convert_module(text: str, expected_policy: str) -> str:
                 f"unexpected policy {policy!r}; expected {expected_policy}"
             )
 
+        if rule_type in UNREPRESENTABLE_RULE_TYPES:
+            skipped_user_agent_rules += 1
+            continue
         if rule_type == "URL-REGEX":
             rules.append(convert_url_regex(fields[1].strip()))
             continue
@@ -98,8 +103,15 @@ def convert_module(text: str, expected_policy: str) -> str:
 
     if not saw_rule_section:
         raise ConversionError("missing [Rule] section")
+    if not rules:
+        raise ConversionError("zero rules converted")
 
-    return "\n".join(rules) + ("\n" if rules else "")
+    return "\n".join(rules) + "\n", skipped_user_agent_rules
+
+
+def convert_module(text: str, expected_policy: str) -> str:
+    converted, _ = _convert_module_with_stats(text, expected_policy)
+    return converted
 
 
 def _download_text(url: str) -> str:
@@ -149,8 +161,15 @@ def main() -> int:
     for label, expected_policy, url, output_path in SOURCE_DEFINITIONS:
         try:
             module_text = _download_text(url)
-            converted = convert_module(module_text, expected_policy)
-            rule_count = 0 if not converted else len(converted.splitlines())
+            converted, skipped_user_agent_rules = _convert_module_with_stats(
+                module_text, expected_policy
+            )
+            if skipped_user_agent_rules:
+                print(
+                    f"{label}: skipped {skipped_user_agent_rules} USER-AGENT rules",
+                    file=sys.stderr,
+                )
+            rule_count = len(converted.splitlines())
             changed = _write_text_if_changed(output_path, converted)
             state = "updated" if changed else "unchanged"
             print(f"{label}: {rule_count} rules ({state}) -> {output_path}")
