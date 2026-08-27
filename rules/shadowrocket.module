@@ -52,6 +52,7 @@ DOMAIN-SUFFIX,qq.com,DIRECT
 DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net,DIRECT
 DOMAIN-SUFFIX,open.kuaishouzt.com,DIRECT
 DOMAIN-SUFFIX,ctext.org,DIRECT
+DOMAIN-SUFFIX,library.ctext.org,DIRECT
 DOMAIN-SUFFIX,zi.tools,DIRECT
 DOMAIN-SUFFIX,homeinmists.com,DIRECT
 DOMAIN-SUFFIX,baike.com,DIRECT

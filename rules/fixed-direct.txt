@@ -49,6 +49,7 @@ DOMAIN-SUFFIX,qq.com
 DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net
 DOMAIN-SUFFIX,open.kuaishouzt.com
 DOMAIN-SUFFIX,ctext.org
+DOMAIN-SUFFIX,library.ctext.org
 DOMAIN-SUFFIX,zi.tools
 DOMAIN-SUFFIX,homeinmists.com
 DOMAIN-SUFFIX,baike.com
