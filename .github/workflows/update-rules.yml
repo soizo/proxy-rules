@@ -1,0 +1,44 @@
+name: Update rules
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run tests
+        run: python3 -m unittest -v
+
+      - name: Convert rules
+        run: python3 convert.py
+
+      - name: Commit generated rules
+        run: |
+          if git diff --quiet -- rules; then
+            echo "No rule changes"
+            exit 0
+          fi
+
+          bot_email='41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name "github-actions[bot]"
+          git config user.email "$bot_email"
+          git add rules/
+          git commit -m "Update generated rules"
+          git push
