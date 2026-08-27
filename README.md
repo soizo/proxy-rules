@@ -1,12 +1,14 @@
 # proxy-rules
 
-Daily-updated Mihomo rule providers converted from three Shadowrocket modules for Clash Verge Rev.
+Mihomo rule providers converted from three upstream Shadowrocket modules and personal rules under `fixed-rules/` for Clash Verge Rev.
 
 ## What is converted
 
-- `DIRECT`, proxy, and `REJECT` routing rules from the source modules.
+- `DIRECT`, `PROXY`, and `REJECT` routing rules from the upstream modules.
+- Personal `.module` files and plain Shadowrocket rule files found recursively under `fixed-rules/`; files may mix policies.
 - Supported Mihomo classical rules are preserved as text providers under `rules/`.
 - Canonical host-only `URL-REGEX` entries are converted to `DOMAIN-REGEX`.
+- Duplicate personal rules are removed while preserving deterministic file and rule order.
 
 ## What is intentionally unsupported
 
@@ -24,7 +26,16 @@ python3 convert.py
 git diff --check
 ```
 
-## Generated raw URLs
+## Personal fixed rules
+
+Add non-hidden files anywhere under `fixed-rules/`. Files containing `[Rule]` use only that section; files without it are read as plain rule lists. Generated personal providers are loaded before the upstream modules in this order: `fixed-direct`, `fixed-proxy`, `fixed-reject`.
+
+Only policies with at least one rule produce a provider file. Current generated URLs are:
+
+- `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/fixed-direct.txt`
+- `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/fixed-proxy.txt`
+
+## Upstream generated URLs
 
 - `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/direct.txt`
 - `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/proxy.txt`
@@ -38,4 +49,5 @@ It loads the providers from the public repository `soizo/proxy-rules`.
 ## Automation
 
 - Runs daily at **03:17 UTC**.
+- Runs after changes to `fixed-rules/**` or `convert.py` reach `main`.
 - Also runs manually through **workflow_dispatch** in GitHub Actions.

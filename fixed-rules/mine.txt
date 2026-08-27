@@ -1,0 +1,107 @@
+#!name=mine
+#!desc=Personal overrides — local network, direct & proxy rules
+
+[Rule]
+
+; ============ Local Network / iPhone Mirroring ============
+IP-CIDR,192.168.0.0/16,DIRECT
+IP-CIDR,172.16.0.0/12,DIRECT
+IP-CIDR,10.0.0.0/8,DIRECT
+IP-CIDR,169.254.0.0/16,DIRECT
+IP-CIDR,224.0.0.0/4,DIRECT
+
+; ============ DIRECT ============
+
+; --- Apple / iCloud ---
+DOMAIN-SUFFIX,apple.com,DIRECT
+DOMAIN-SUFFIX,apple-dns.net,DIRECT
+DOMAIN-SUFFIX,apple-relay.cloudflare.com,DIRECT
+DOMAIN-SUFFIX,aaplimg.com,DIRECT
+DOMAIN-SUFFIX,cdn-apple.com,DIRECT
+DOMAIN-SUFFIX,icloud-content.com,DIRECT
+DOMAIN-SUFFIX,itunes.com,DIRECT
+DOMAIN-SUFFIX,mzstatic.com,DIRECT
+DOMAIN-SUFFIX,digicert.com,DIRECT
+
+; --- Byte / TikTok ---
+DOMAIN-SUFFIX,amemv.com,DIRECT
+DOMAIN-SUFFIX,bytescm.com,DIRECT
+DOMAIN-SUFFIX,bytegecko.com,DIRECT
+DOMAIN-SUFFIX,byteimg.com,DIRECT
+DOMAIN-SUFFIX,ctobsnssdk.com,DIRECT
+DOMAIN-SUFFIX,douyinpic.com,DIRECT
+DOMAIN-SUFFIX,ecombdapi.com,DIRECT
+DOMAIN-SUFFIX,ecomuser.snssdk.com,DIRECT
+DOMAIN-SUFFIX,pangolin-sdk-toutiao.com,DIRECT
+DOMAIN-SUFFIX,pangolin-sdk-toutiao1.com,DIRECT
+DOMAIN-SUFFIX,pglstatp-toutiao.com,DIRECT
+DOMAIN-SUFFIX,volces.com,DIRECT
+DOMAIN-SUFFIX,zijieapi.com,DIRECT
+
+; --- Alibaba ---
+DOMAIN-SUFFIX,alibaba.com,DIRECT
+DOMAIN-SUFFIX,alibaba-inc.com,DIRECT
+DOMAIN-SUFFIX,alibabachengdun.com,DIRECT
+DOMAIN-SUFFIX,alibabausercontent.com,DIRECT
+DOMAIN-SUFFIX,alicdn.com,DIRECT
+DOMAIN-SUFFIX,alidns.com,DIRECT
+DOMAIN-SUFFIX,alipay.com,DIRECT
+DOMAIN-SUFFIX,alipayobjects.com,DIRECT
+DOMAIN-SUFFIX,aliyun.com,DIRECT
+DOMAIN-SUFFIX,aliyuncs.com,DIRECT
+DOMAIN-SUFFIX,amap.com,DIRECT
+DOMAIN-SUFFIX,dingtalk.com,DIRECT
+DOMAIN-SUFFIX,freshippo.com,DIRECT
+DOMAIN-SUFFIX,goofish.com,DIRECT
+DOMAIN-SUFFIX,mmstat.com,DIRECT
+DOMAIN-SUFFIX,taobao.com,DIRECT
+DOMAIN-SUFFIX,tanx.com,DIRECT
+DOMAIN-SUFFIX,ucweb.com,DIRECT
+DOMAIN-SUFFIX,youku.com,DIRECT
+DOMAIN,h-adashx.ut.hzshudian.com,DIRECT
+
+; --- Tencent ---
+DOMAIN-SUFFIX,qq.com,DIRECT
+DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net,DIRECT
+
+; --- Kuaishou ---
+DOMAIN-SUFFIX,open.kuaishouzt.com,DIRECT
+
+; --- Chinese Classics / Research ---
+DOMAIN-SUFFIX,ctext.org,DIRECT
+DOMAIN-SUFFIX,zi.tools,DIRECT
+DOMAIN-SUFFIX,homeinmists.com,DIRECT
+DOMAIN-SUFFIX,baike.com,DIRECT
+
+; --- Other DIRECT ---
+DOMAIN-SUFFIX,beizi.biz,DIRECT
+DOMAIN-SUFFIX,cn,DIRECT
+DOMAIN-SUFFIX,downloads.khinsider.com,DIRECT
+DOMAIN-SUFFIX,userapi.com,DIRECT
+DOMAIN-SUFFIX,www.radio-browser.info,DIRECT
+DOMAIN-SUFFIX,www.fjptsz.com,DIRECT
+DOMAIN-SUFFIX,www.homeinmists.com,DIRECT
+DOMAIN-SUFFIX,claudecn.top,DIRECT
+DOMAIN-SUFFIX,lobehub.com,PROXY
+DOMAIN-SUFFIX,crazyrouter.com,DIRECT
+DOMAIN-SUFFIX,api.revenuecat.com,DIRECT
+DOMAIN-SUFFIX,pony.town,DIRECT
+
+; ============ PROXY ============
+
+; --- AI ---
+DOMAIN-SUFFIX,ios.chat.openai.com,PROXY
+DOMAIN-SUFFIX,a-api.anthropic.com,PROXY
+DOMAIN-SUFFIX,a-cdn.anthropic.com,PROXY
+DOMAIN-SUFFIX,statsig.anthropic.com,PROXY
+DOMAIN-SUFFIX,bewild.ai,PROXY
+
+; --- Google ---
+DOMAIN-SUFFIX,imap.gmail.com,PROXY
+
+; --- Apple (forced proxy) ---
+DOMAIN-SUFFIX,news-edge.apple.com,PROXY
+
+; --- Nom / Han-Nom research ---
+DOMAIN-SUFFIX,nomfoundation.org,PROXY
+DOMAIN-SUFFIX,hannom-rcv.org,PROXY
