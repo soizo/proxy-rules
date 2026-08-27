@@ -25,6 +25,7 @@ FIXED_POLICIES = ("DIRECT", "PROXY", "REJECT")
 FIXED_SOURCE_DIR = Path("fixed-rules")
 FIXED_OUTPUT_DIR = Path("rules")
 CLASH_VERGE_SCRIPT_PATH = Path("clash-verge-script.js")
+SHADOWROCKET_OUTPUT_PATH = Path("rules/shadowrocket.module")
 FIXED_PROVIDER_START = "// BEGIN GENERATED FIXED PROVIDERS"
 FIXED_PROVIDER_END = "// END GENERATED FIXED PROVIDERS"
 
@@ -68,19 +69,26 @@ def convert_url_regex(expression: str) -> str:
     return f"DOMAIN-REGEX,^{host_regex}$"
 
 
-def _convert_rule_line(
+def _parse_rule_fields(
     line: str, expected_policy: str | None = None
-) -> tuple[str, str | None]:
+) -> tuple[list[str], str]:
     fields = next(csv.reader([line], skipinitialspace=True))
     if len(fields) < 3:
         raise ConversionError(f"unsupported rule line: {line}")
 
-    rule_type = fields[0].strip()
     policy = fields[-1].strip()
     if expected_policy is not None and policy != expected_policy:
         raise ConversionError(f"unexpected policy {policy!r}; expected {expected_policy}")
     if policy not in FIXED_POLICIES:
         raise ConversionError(f"unsupported policy: {policy!r}")
+    return fields, policy
+
+
+def _convert_rule_line(
+    line: str, expected_policy: str | None = None
+) -> tuple[str, str | None]:
+    fields, policy = _parse_rule_fields(line, expected_policy)
+    rule_type = fields[0].strip()
 
     if rule_type in UNREPRESENTABLE_RULE_TYPES:
         return policy, None
@@ -129,22 +137,27 @@ def _convert_module_with_stats(text: str, expected_policy: str) -> tuple[str, in
     return "\n".join(rules) + "\n", skipped_user_agent_rules
 
 
-def convert_fixed_rules(source_dir: Path) -> tuple[dict[str, list[str]], int]:
-    rules_by_policy: dict[str, list[str]] = {policy: [] for policy in FIXED_POLICIES}
-    seen_by_policy: dict[str, set[str]] = {policy: set() for policy in FIXED_POLICIES}
-    skipped_user_agent_rules = 0
-    paths = sorted(
+def _fixed_source_paths(source_dir: Path) -> list[Path]:
+    return sorted(
         (
             path
             for path in source_dir.rglob("*")
             if path.is_file()
             and not path.is_symlink()
-            and not any(part.startswith(".") for part in path.relative_to(source_dir).parts)
+            and not any(
+                part.startswith(".") for part in path.relative_to(source_dir).parts
+            )
         ),
         key=lambda path: path.relative_to(source_dir).as_posix(),
     )
 
-    for path in paths:
+
+def convert_fixed_rules(source_dir: Path) -> tuple[dict[str, list[str]], int]:
+    rules_by_policy: dict[str, list[str]] = {policy: [] for policy in FIXED_POLICIES}
+    seen_by_policy: dict[str, set[str]] = {policy: set() for policy in FIXED_POLICIES}
+    skipped_user_agent_rules = 0
+
+    for path in _fixed_source_paths(source_dir):
         for line in _iter_rule_lines(path.read_text(encoding="utf-8"), False)[0]:
             policy, converted = _convert_rule_line(line)
             if converted is None:
@@ -157,6 +170,38 @@ def convert_fixed_rules(source_dir: Path) -> tuple[dict[str, list[str]], int]:
         {policy: rules for policy, rules in rules_by_policy.items() if rules},
         skipped_user_agent_rules,
     )
+
+
+def build_shadowrocket_module(
+    source_dir: Path, upstream_modules: list[tuple[str, str]]
+) -> str:
+    fixed_by_policy: dict[str, list[str]] = {
+        policy: [] for policy in FIXED_POLICIES
+    }
+    for path in _fixed_source_paths(source_dir):
+        for line in _iter_rule_lines(path.read_text(encoding="utf-8"), False)[0]:
+            _, policy = _parse_rule_fields(line)
+            fixed_by_policy[policy].append(line)
+
+    ordered_rules = [
+        rule
+        for policy in FIXED_POLICIES
+        for rule in fixed_by_policy[policy]
+    ]
+    for expected_policy, text in upstream_modules:
+        for line in _iter_rule_lines(text, require_rule_section=True)[0]:
+            _parse_rule_fields(line, expected_policy)
+            ordered_rules.append(line)
+
+    unique_rules = list(dict.fromkeys(ordered_rules))
+    if not unique_rules:
+        raise ConversionError("zero rules for Shadowrocket module")
+    header = (
+        "#!name=proxy-rules\n"
+        "#!desc=Combined fixed and upstream routing rules\n"
+        "[Rule]\n"
+    )
+    return header + "\n".join(unique_rules) + "\n"
 
 
 def convert_module(text: str, expected_policy: str) -> str:
@@ -269,12 +314,14 @@ def main() -> int:
         print(f"fixed: {exc}", file=sys.stderr)
         return 1
 
+    upstream_modules: list[tuple[str, str]] = []
     for label, expected_policy, url, output_path in SOURCE_DEFINITIONS:
         try:
             module_text = _download_text(url)
             converted, skipped_user_agent_rules = _convert_module_with_stats(
                 module_text, expected_policy
             )
+            upstream_modules.append((expected_policy, module_text))
             if skipped_user_agent_rules:
                 print(
                     f"{label}: skipped {skipped_user_agent_rules} USER-AGENT rules",
@@ -287,6 +334,23 @@ def main() -> int:
         except ConversionError as exc:
             print(f"{label}: {exc}", file=sys.stderr)
             return 1
+
+    try:
+        shadowrocket_module = build_shadowrocket_module(
+            FIXED_SOURCE_DIR, upstream_modules
+        )
+        changed = _write_text_if_changed(
+            SHADOWROCKET_OUTPUT_PATH, shadowrocket_module
+        )
+        state = "updated" if changed else "unchanged"
+        rule_count = len(shadowrocket_module.splitlines()) - 3
+        print(
+            f"shadowrocket: {rule_count} rules ({state}) "
+            f"-> {SHADOWROCKET_OUTPUT_PATH}"
+        )
+    except (ConversionError, OSError, UnicodeError) as exc:
+        print(f"shadowrocket: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 
