@@ -69,6 +69,7 @@ DOMAIN-SUFFIX,open.kuaishouzt.com,DIRECT
 
 ; --- Chinese Classics / Research ---
 DOMAIN-SUFFIX,ctext.org,DIRECT
+DOMAIN-SUFFIX,library.ctext.org,DIRECT
 DOMAIN-SUFFIX,zi.tools,DIRECT
 DOMAIN-SUFFIX,homeinmists.com,DIRECT
 DOMAIN-SUFFIX,baike.com,DIRECT
