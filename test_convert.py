@@ -88,18 +88,31 @@ DOMAIN,example.com,DIRECT
 
         stdout = io.StringIO()
         stderr = io.StringIO()
-        with patch.object(
-            convert_mod,
-            "SOURCE_DEFINITIONS",
-            (("sample", "DIRECT", "https://example.test/sample.module", Path("rules/sample.txt")),),
-        ), patch.object(convert_mod, "_download_text", return_value=module), patch.object(
-            convert_mod, "_write_text_if_changed", side_effect=fake_write
-        ), redirect_stdout(stdout), redirect_stderr(stderr):
+        with (
+            patch.object(
+                convert_mod,
+                "SOURCE_DEFINITIONS",
+                (
+                    (
+                        "sample",
+                        "DIRECT",
+                        "https://example.test/sample.module",
+                        Path("rules/sample.txt"),
+                    ),
+                ),
+            ),
+            patch.object(convert_mod, "_download_text", return_value=module),
+            patch.object(convert_mod, "_write_text_if_changed", side_effect=fake_write),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
             self.assertEqual(convert_mod.main(), 0)
 
         self.assertEqual(captured["text"], "DOMAIN,example.com\n")
         self.assertIn("sample: skipped 1 USER-AGENT rules", stderr.getvalue())
-        self.assertIn("sample: 1 rules (updated) -> rules/sample.txt", stdout.getvalue())
+        self.assertIn(
+            "sample: 1 rules (updated) -> rules/sample.txt", stdout.getvalue()
+        )
 
     def test_preserves_quoted_regex_commas(self):
         module = """[Rule]
