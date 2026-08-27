@@ -41,6 +41,14 @@ Only policies with at least one rule produce a provider file. Current generated 
 - `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/proxy.txt`
 - `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/reject.txt`
 
+## Shadowrocket setup
+
+Subscribe to the single combined module:
+
+- `https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/shadowrocket.module`
+
+It preserves native Shadowrocket rules and policies in fixed DIRECT → PROXY → REJECT, then upstream DIRECT → PROXY → REJECT order.
+
 ## Clash Verge Rev setup
 
 Paste `clash-verge-script.js` into **Profiles → Global Extend Script**.

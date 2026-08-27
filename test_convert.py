@@ -8,6 +8,7 @@ from unittest.mock import patch
 import convert as convert_mod
 from convert import (
     ConversionError,
+    build_shadowrocket_module,
     convert_fixed_rules,
     convert_module,
     convert_url_regex,
@@ -90,8 +91,7 @@ DOMAIN,example.com,DIRECT
         captured = {}
 
         def fake_write(path, text):
-            captured["path"] = path
-            captured["text"] = text
+            captured[path] = text
             return True
 
         stdout = io.StringIO()
@@ -125,7 +125,9 @@ DOMAIN,example.com,DIRECT
         ):
             self.assertEqual(convert_mod.main(), 0)
 
-        self.assertEqual(captured["text"], "DOMAIN,example.com\n")
+        self.assertEqual(
+            captured[Path("rules/sample.txt")], "DOMAIN,example.com\n"
+        )
         self.assertIn("sample: skipped 1 USER-AGENT rules", stderr.getvalue())
         self.assertIn(
             "sample: 1 rules (updated) -> rules/sample.txt", stdout.getvalue()
@@ -278,6 +280,53 @@ URL-REGEX,^https?:\\/\\/plain\\.example.*$,DIRECT
                 states,
                 {"DIRECT": "updated", "PROXY": "removed", "REJECT": "removed"},
             )
+
+    def test_builds_one_native_shadowrocket_module_in_priority_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            (source / "mine.module").write_text(
+                """#!name=mine
+[Rule]
+DOMAIN,fixed-proxy.example,PROXY
+DOMAIN,fixed-direct.example,DIRECT
+USER-AGENT,Shadowrocket,DIRECT
+DOMAIN,fixed-reject.example,REJECT
+""",
+                encoding="utf-8",
+            )
+            upstream = [
+                (
+                    "DIRECT",
+                    """[Rule]
+DOMAIN,fixed-direct.example,DIRECT
+URL-REGEX,^https?:\\/\\/direct\\.example.*$,DIRECT
+""",
+                ),
+                ("PROXY", "[Rule]\nDOMAIN,upstream-proxy.example,PROXY\n"),
+                ("REJECT", "[Rule]\nDOMAIN,upstream-reject.example,REJECT\n"),
+            ]
+
+            module = build_shadowrocket_module(source, upstream)
+
+        self.assertEqual(
+            module,
+            """#!name=proxy-rules
+#!desc=Combined fixed and upstream routing rules
+[Rule]
+DOMAIN,fixed-direct.example,DIRECT
+USER-AGENT,Shadowrocket,DIRECT
+DOMAIN,fixed-proxy.example,PROXY
+DOMAIN,fixed-reject.example,REJECT
+URL-REGEX,^https?:\\/\\/direct\\.example.*$,DIRECT
+DOMAIN,upstream-proxy.example,PROXY
+DOMAIN,upstream-reject.example,REJECT
+""",
+        )
+
+    def test_rejects_empty_shadowrocket_module(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ConversionError, "zero rules"):
+                build_shadowrocket_module(Path(directory), [])
 
     def test_updates_script_to_reference_only_present_fixed_outputs(self):
         script = """before
