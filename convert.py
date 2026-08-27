@@ -21,6 +21,12 @@ SUPPORTED_CLASSICAL_RULE_TYPES = {
 }
 
 UNREPRESENTABLE_RULE_TYPES = {"USER-AGENT"}
+FIXED_POLICIES = ("DIRECT", "PROXY", "REJECT")
+FIXED_SOURCE_DIR = Path("fixed-rules")
+FIXED_OUTPUT_DIR = Path("rules")
+CLASH_VERGE_SCRIPT_PATH = Path("clash-verge-script.js")
+FIXED_PROVIDER_START = "// BEGIN GENERATED FIXED PROVIDERS"
+FIXED_PROVIDER_END = "// END GENERATED FIXED PROVIDERS"
 
 URL_REGEX_PREFIX = r"^https?:\/\/"
 URL_REGEX_SUFFIX = r".*$"
@@ -62,51 +68,95 @@ def convert_url_regex(expression: str) -> str:
     return f"DOMAIN-REGEX,^{host_regex}$"
 
 
-def _convert_module_with_stats(text: str, expected_policy: str) -> tuple[str, int]:
-    rules: list[str] = []
-    skipped_user_agent_rules = 0
-    in_rule_section = False
-    saw_rule_section = False
+def _convert_rule_line(
+    line: str, expected_policy: str | None = None
+) -> tuple[str, str | None]:
+    fields = next(csv.reader([line], skipinitialspace=True))
+    if len(fields) < 3:
+        raise ConversionError(f"unsupported rule line: {line}")
+
+    rule_type = fields[0].strip()
+    policy = fields[-1].strip()
+    if expected_policy is not None and policy != expected_policy:
+        raise ConversionError(f"unexpected policy {policy!r}; expected {expected_policy}")
+    if policy not in FIXED_POLICIES:
+        raise ConversionError(f"unsupported policy: {policy!r}")
+
+    if rule_type in UNREPRESENTABLE_RULE_TYPES:
+        return policy, None
+    if rule_type == "URL-REGEX":
+        return policy, convert_url_regex(fields[1].strip())
+    if rule_type not in SUPPORTED_CLASSICAL_RULE_TYPES:
+        raise ConversionError(f"unsupported rule type: {rule_type}")
+
+    return policy, f"{rule_type},{','.join(field.strip() for field in fields[1:-1])}"
+
+
+def _iter_rule_lines(text: str, require_rule_section: bool) -> tuple[list[str], bool]:
+    saw_rule_section = any(line.strip() == "[Rule]" for line in text.splitlines())
+    in_rule_section = not saw_rule_section
+    lines: list[str] = []
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
-        if not line or line.startswith(("#!", "#")):
+        if not line or line.startswith(("#", ";")):
             continue
         if line.startswith("[") and line.endswith("]"):
             in_rule_section = line == "[Rule]"
-            saw_rule_section = saw_rule_section or in_rule_section
             continue
-        if not in_rule_section:
-            continue
+        if in_rule_section:
+            lines.append(line)
 
-        fields = next(csv.reader([line], skipinitialspace=True))
-        if len(fields) < 3:
-            raise ConversionError(f"unsupported rule line: {line}")
-
-        rule_type = fields[0].strip()
-        policy = fields[-1].strip()
-        if policy != expected_policy:
-            raise ConversionError(
-                f"unexpected policy {policy!r}; expected {expected_policy}"
-            )
-
-        if rule_type in UNREPRESENTABLE_RULE_TYPES:
-            skipped_user_agent_rules += 1
-            continue
-        if rule_type == "URL-REGEX":
-            rules.append(convert_url_regex(fields[1].strip()))
-            continue
-        if rule_type not in SUPPORTED_CLASSICAL_RULE_TYPES:
-            raise ConversionError(f"unsupported rule type: {rule_type}")
-
-        rules.append(f"{rule_type},{','.join(field.strip() for field in fields[1:-1])}")
-
-    if not saw_rule_section:
+    if require_rule_section and not saw_rule_section:
         raise ConversionError("missing [Rule] section")
+    return lines, saw_rule_section
+
+
+def _convert_module_with_stats(text: str, expected_policy: str) -> tuple[str, int]:
+    rules: list[str] = []
+    skipped_user_agent_rules = 0
+
+    for line in _iter_rule_lines(text, require_rule_section=True)[0]:
+        _, converted = _convert_rule_line(line, expected_policy)
+        if converted is None:
+            skipped_user_agent_rules += 1
+        else:
+            rules.append(converted)
+
     if not rules:
         raise ConversionError("zero rules converted")
 
     return "\n".join(rules) + "\n", skipped_user_agent_rules
+
+
+def convert_fixed_rules(source_dir: Path) -> tuple[dict[str, list[str]], int]:
+    rules_by_policy: dict[str, list[str]] = {policy: [] for policy in FIXED_POLICIES}
+    seen_by_policy: dict[str, set[str]] = {policy: set() for policy in FIXED_POLICIES}
+    skipped_user_agent_rules = 0
+    paths = sorted(
+        (
+            path
+            for path in source_dir.rglob("*")
+            if path.is_file()
+            and not path.is_symlink()
+            and not any(part.startswith(".") for part in path.relative_to(source_dir).parts)
+        ),
+        key=lambda path: path.relative_to(source_dir).as_posix(),
+    )
+
+    for path in paths:
+        for line in _iter_rule_lines(path.read_text(encoding="utf-8"), False)[0]:
+            policy, converted = _convert_rule_line(line)
+            if converted is None:
+                skipped_user_agent_rules += 1
+            elif converted not in seen_by_policy[policy]:
+                seen_by_policy[policy].add(converted)
+                rules_by_policy[policy].append(converted)
+
+    return (
+        {policy: rules for policy, rules in rules_by_policy.items() if rules},
+        skipped_user_agent_rules,
+    )
 
 
 def convert_module(text: str, expected_policy: str) -> str:
@@ -157,7 +207,68 @@ def _write_text_if_changed(path: Path, text: str) -> bool:
     return True
 
 
+def write_fixed_rule_outputs(
+    rules_by_policy: dict[str, list[str]], output_dir: Path
+) -> dict[str, str]:
+    states: dict[str, str] = {}
+    for policy in FIXED_POLICIES:
+        output_path = output_dir / f"fixed-{policy.lower()}.txt"
+        rules = rules_by_policy.get(policy, [])
+        if rules:
+            changed = _write_text_if_changed(output_path, "\n".join(rules) + "\n")
+            states[policy] = "updated" if changed else "unchanged"
+        elif output_path.exists():
+            output_path.unlink()
+            states[policy] = "removed"
+        else:
+            states[policy] = "absent"
+    return states
+
+
+def update_fixed_providers_in_script(path: Path, policies: set[str]) -> bool:
+    text = path.read_text(encoding="utf-8")
+    start = text.find(FIXED_PROVIDER_START)
+    end = text.find(FIXED_PROVIDER_END)
+    if start < 0 or end < start:
+        raise ConversionError("fixed provider markers missing from Clash Verge script")
+
+    entries = "\n".join(
+        f'  "fixed-{policy.lower()}": "fixed-{policy.lower()}.txt",'
+        for policy in FIXED_POLICIES
+        if policy in policies
+    )
+    generated = f"{FIXED_PROVIDER_START}\nconst FIXED_PROVIDERS = {{\n{entries}\n}};\n"
+    updated = text[:start] + generated + text[end:]
+    return _write_text_if_changed(path, updated)
+
+
 def main() -> int:
+    try:
+        fixed_rules, skipped_fixed_user_agent_rules = convert_fixed_rules(
+            FIXED_SOURCE_DIR
+        )
+        fixed_states = write_fixed_rule_outputs(fixed_rules, FIXED_OUTPUT_DIR)
+        script_changed = update_fixed_providers_in_script(
+            CLASH_VERGE_SCRIPT_PATH, set(fixed_rules)
+        )
+        if skipped_fixed_user_agent_rules:
+            print(
+                "fixed: skipped "
+                f"{skipped_fixed_user_agent_rules} USER-AGENT rules",
+                file=sys.stderr,
+            )
+        for policy in FIXED_POLICIES:
+            rule_count = len(fixed_rules.get(policy, []))
+            print(
+                f"fixed-{policy.lower()}: {rule_count} rules "
+                f"({fixed_states[policy]})"
+            )
+        script_state = "updated" if script_changed else "unchanged"
+        print(f"fixed providers: {script_state} -> {CLASH_VERGE_SCRIPT_PATH}")
+    except (ConversionError, OSError, UnicodeError) as exc:
+        print(f"fixed: {exc}", file=sys.stderr)
+        return 1
+
     for label, expected_policy, url, output_path in SOURCE_DEFINITIONS:
         try:
             module_text = _download_text(url)

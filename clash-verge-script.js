@@ -7,7 +7,13 @@ const PREFERRED_PROXY_GROUPS = [
   "节点选择",
   "🚀 节点选择",
 ];
-const PROVIDERS = {
+// BEGIN GENERATED FIXED PROVIDERS
+const FIXED_PROVIDERS = {
+  "fixed-direct": "fixed-direct.txt",
+  "fixed-proxy": "fixed-proxy.txt",
+};
+// END GENERATED FIXED PROVIDERS
+const MODULE_PROVIDERS = {
   "module-direct": "direct.txt",
   "module-proxy": "proxy.txt",
   "module-reject": "reject.txt",
@@ -40,7 +46,11 @@ function main(config, profileName) {
   const proxyGroup = findProxyGroup(output);
 
   output["rule-providers"] = providers;
-  for (const [name, file] of Object.entries(PROVIDERS)) {
+  const configuredProviders = [
+    ...Object.entries(FIXED_PROVIDERS),
+    ...Object.entries(MODULE_PROVIDERS),
+  ];
+  for (const [name, file] of configuredProviders) {
     providers[name] = {
       type: "http",
       behavior: "classical",
@@ -52,9 +62,14 @@ function main(config, profileName) {
 
   const rules = Array.isArray(output.rules) ? output.rules : [];
   output.rules = [
-    "RULE-SET,module-direct,DIRECT",
-    `RULE-SET,module-proxy,${proxyGroup}`,
-    "RULE-SET,module-reject,REJECT",
+    ...configuredProviders.map(([name]) => {
+      const policy = name.endsWith("-direct")
+        ? "DIRECT"
+        : name.endsWith("-proxy")
+          ? proxyGroup
+          : "REJECT";
+      return `RULE-SET,${name},${policy}`;
+    }),
     ...rules,
   ];
 

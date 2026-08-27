@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - "fixed-rules/**"
+      - "convert.py"
 
 permissions:
   contents: write
@@ -31,7 +37,7 @@ jobs:
 
       - name: Commit generated rules
         run: |
-          if git diff --quiet -- rules; then
+          if git diff --quiet -- rules clash-verge-script.js; then
             echo "No rule changes"
             exit 0
           fi
@@ -39,6 +45,6 @@ jobs:
           bot_email='41898282+github-actions[bot]@users.noreply.github.com'
           git config user.name "github-actions[bot]"
           git config user.email "$bot_email"
-          git add rules/
+          git add rules/ clash-verge-script.js
           git commit -m "Update generated rules"
           git push

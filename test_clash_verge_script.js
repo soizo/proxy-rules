@@ -47,6 +47,21 @@ assert.deepStrictEqual(
   plain(output["rule-providers"].existing),
   config["rule-providers"].existing,
 );
+assert.deepStrictEqual(plain(output["rule-providers"]["fixed-direct"]), {
+  type: "http",
+  behavior: "classical",
+  format: "text",
+  interval: 86400,
+  url: "https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/fixed-direct.txt",
+});
+assert.deepStrictEqual(plain(output["rule-providers"]["fixed-proxy"]), {
+  type: "http",
+  behavior: "classical",
+  format: "text",
+  interval: 86400,
+  url: "https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/fixed-proxy.txt",
+});
+assert.strictEqual(output["rule-providers"]["fixed-reject"], undefined);
 assert.deepStrictEqual(plain(output["rule-providers"]["module-direct"]), {
   type: "http",
   behavior: "classical",
@@ -68,15 +83,31 @@ assert.deepStrictEqual(plain(output["rule-providers"]["module-reject"]), {
   interval: 86400,
   url: "https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/reject.txt",
 });
-assert.deepStrictEqual(plain(output.rules.slice(0, 3)), [
+assert.deepStrictEqual(plain(output.rules.slice(0, 5)), [
+  "RULE-SET,fixed-direct,DIRECT",
+  "RULE-SET,fixed-proxy,节点选择",
   "RULE-SET,module-direct,DIRECT",
   "RULE-SET,module-proxy,节点选择",
   "RULE-SET,module-reject,REJECT",
 ]);
-assert.deepStrictEqual(plain(output.rules.slice(3)), ["SUBSCRIPTION-RULE"]);
+assert.deepStrictEqual(plain(output.rules.slice(5)), ["SUBSCRIPTION-RULE"]);
 
 const empty = main({}, "profile");
 assert.deepStrictEqual(plain(empty["rule-providers"]), {
+  "fixed-direct": {
+    type: "http",
+    behavior: "classical",
+    format: "text",
+    interval: 86400,
+    url: "https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/fixed-direct.txt",
+  },
+  "fixed-proxy": {
+    type: "http",
+    behavior: "classical",
+    format: "text",
+    interval: 86400,
+    url: "https://raw.githubusercontent.com/soizo/proxy-rules/main/rules/fixed-proxy.txt",
+  },
   "module-direct": {
     type: "http",
     behavior: "classical",
@@ -100,6 +131,8 @@ assert.deepStrictEqual(plain(empty["rule-providers"]), {
   },
 });
 assert.deepStrictEqual(plain(empty.rules), [
+  "RULE-SET,fixed-direct,DIRECT",
+  "RULE-SET,fixed-proxy,GLOBAL",
   "RULE-SET,module-direct,DIRECT",
   "RULE-SET,module-proxy,GLOBAL",
   "RULE-SET,module-reject,REJECT",
