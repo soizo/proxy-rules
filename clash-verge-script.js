@@ -6,6 +6,8 @@ const PREFERRED_PROXY_GROUPS = [
   "proxy",
   "节点选择",
   "🚀 节点选择",
+  "选择节点",
+  "🔰 选择节点",
 ];
 // BEGIN GENERATED FIXED PROVIDERS
 const FIXED_PROVIDERS = {
