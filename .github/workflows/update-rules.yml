@@ -37,7 +37,7 @@ jobs:
 
       - name: Commit generated rules
         run: |
-          if git diff --quiet -- rules clash-verge-script.js; then
+          if git diff --quiet -- rules clash-script.js; then
             echo "No rule changes"
             exit 0
           fi
@@ -45,6 +45,6 @@ jobs:
           bot_email='41898282+github-actions[bot]@users.noreply.github.com'
           git config user.name "github-actions[bot]"
           git config user.email "$bot_email"
-          git add rules/ clash-verge-script.js
+          git add rules/ clash-script.js
           git commit -m "Update generated rules"
           git push

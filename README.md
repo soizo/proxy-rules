@@ -1,6 +1,6 @@
 # proxy-rules
 
-Mihomo rule providers converted from three upstream Shadowrocket modules and personal rules under `fixed-rules/` for Clash Verge Rev.
+Mihomo rule providers converted from three upstream Shadowrocket modules and personal rules under `fixed-rules/` for Clash/Mihomo.
 
 ## What is converted
 
@@ -21,7 +21,7 @@ Mihomo rule providers converted from three upstream Shadowrocket modules and per
 
 ```bash
 python3 -m unittest -v
-node test_clash_verge_script.js
+node test_clash_script.js
 python3 convert.py
 git diff --check
 ```
@@ -51,7 +51,7 @@ It preserves native Shadowrocket rules and policies in fixed DIRECT → PROXY �
 
 ## Clash Verge Rev setup
 
-Paste `clash-verge-script.js` into **Profiles → Global Extend Script**.
+Paste `clash-script.js` into **Profiles → Global Extend Script**.
 It loads the providers from the public repository `soizo/proxy-rules`.
 
 ## Automation

@@ -24,7 +24,7 @@ UNREPRESENTABLE_RULE_TYPES = {"USER-AGENT"}
 FIXED_POLICIES = ("DIRECT", "PROXY", "REJECT")
 FIXED_SOURCE_DIR = Path("fixed-rules")
 FIXED_OUTPUT_DIR = Path("rules")
-CLASH_VERGE_SCRIPT_PATH = Path("clash-verge-script.js")
+CLASH_SCRIPT_PATH = Path("clash-script.js")
 SHADOWROCKET_OUTPUT_PATH = Path("rules/shadowrocket.module")
 FIXED_PROVIDER_START = "// BEGIN GENERATED FIXED PROVIDERS"
 FIXED_PROVIDER_END = "// END GENERATED FIXED PROVIDERS"
@@ -275,7 +275,7 @@ def update_fixed_providers_in_script(path: Path, policies: set[str]) -> bool:
     start = text.find(FIXED_PROVIDER_START)
     end = text.find(FIXED_PROVIDER_END)
     if start < 0 or end < start:
-        raise ConversionError("fixed provider markers missing from Clash Verge script")
+        raise ConversionError("fixed provider markers missing from Clash script")
 
     entries = "\n".join(
         f'  "fixed-{policy.lower()}": "fixed-{policy.lower()}.txt",'
@@ -294,7 +294,7 @@ def main() -> int:
         )
         fixed_states = write_fixed_rule_outputs(fixed_rules, FIXED_OUTPUT_DIR)
         script_changed = update_fixed_providers_in_script(
-            CLASH_VERGE_SCRIPT_PATH, set(fixed_rules)
+            CLASH_SCRIPT_PATH, set(fixed_rules)
         )
         if skipped_fixed_user_agent_rules:
             print(
@@ -309,7 +309,7 @@ def main() -> int:
                 f"({fixed_states[policy]})"
             )
         script_state = "updated" if script_changed else "unchanged"
-        print(f"fixed providers: {script_state} -> {CLASH_VERGE_SCRIPT_PATH}")
+        print(f"fixed providers: {script_state} -> {CLASH_SCRIPT_PATH}")
     except (ConversionError, OSError, UnicodeError) as exc:
         print(f"fixed: {exc}", file=sys.stderr)
         return 1

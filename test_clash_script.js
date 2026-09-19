@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const scriptPath = path.join(__dirname, "clash-verge-script.js");
+const scriptPath = path.join(__dirname, "clash-script.js");
 const code = fs.readFileSync(scriptPath, "utf8");
 const context = {
   console,
