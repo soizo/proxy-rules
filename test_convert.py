@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import convert as convert_mod
 from convert import (
@@ -18,6 +18,40 @@ from convert import (
 
 
 class ConvertTests(unittest.TestCase):
+    def test_download_retries_read_timeout_with_new_connection(self):
+        first, second = Mock(), Mock()
+        first.getresponse.return_value.status = 200
+        first.getresponse.return_value.read.side_effect = TimeoutError("read timed out")
+        second.getresponse.return_value.status = 200
+        second.getresponse.return_value.read.return_value = b"complete rules"
+        with patch.object(convert_mod.http.client, "HTTPSConnection", side_effect=[first, second]), patch.object(convert_mod.time, "sleep") as sleep:
+            self.assertEqual(convert_mod._download_text("https://example.com/rules"), "complete rules")
+        sleep.assert_called_once_with(1)
+        first.close.assert_called_once()
+        second.close.assert_called_once()
+
+    def test_download_retries_transient_http_errors_and_stops(self):
+        for status in (429, 503):
+            with self.subTest(status=status):
+                connection = Mock()
+                connection.getresponse.return_value.status = status
+                with patch.object(convert_mod.http.client, "HTTPSConnection", return_value=connection) as factory, patch.object(convert_mod.time, "sleep") as sleep:
+                    with self.assertRaisesRegex(ConversionError, "after 3 attempts"):
+                        convert_mod._download_text("https://example.com/rules")
+                self.assertEqual(factory.call_count, 3)
+                self.assertEqual(connection.close.call_count, 3)
+                self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+
+    def test_download_does_not_retry_permanent_http_error(self):
+        connection = Mock()
+        connection.getresponse.return_value.status = 404
+        with patch.object(convert_mod.http.client, "HTTPSConnection", return_value=connection) as factory, patch.object(convert_mod.time, "sleep") as sleep:
+            with self.assertRaisesRegex(ConversionError, "HTTP 404"):
+                convert_mod._download_text("https://example.com/rules")
+        factory.assert_called_once()
+        sleep.assert_not_called()
+        connection.close.assert_called_once()
+
     def test_converts_rule_section_and_strips_policy(self):
         module = """#!name=test
 [Rule]

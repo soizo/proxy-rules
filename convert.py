@@ -4,6 +4,7 @@ import csv
 import http.client
 import os
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -31,7 +32,8 @@ FIXED_PROVIDER_END = "// END GENERATED FIXED PROVIDERS"
 
 URL_REGEX_PREFIX = r"^https?:\/\/"
 URL_REGEX_SUFFIX = r".*$"
-DOWNLOAD_TIMEOUT_SECONDS = 15
+DOWNLOAD_TIMEOUT_SECONDS = 30
+DOWNLOAD_ATTEMPTS = 3
 SOURCE_DEFINITIONS = (
     (
         "direct",
@@ -213,24 +215,36 @@ def _download_text(url: str) -> str:
     parts = urlsplit(url)
     if parts.scheme != "https" or not parts.netloc:
         raise ConversionError(f"unsupported download URL: {url}")
-    connection = http.client.HTTPSConnection(
-        parts.netloc, timeout=DOWNLOAD_TIMEOUT_SECONDS
-    )
-    try:
-        path = parts.path or "/"
-        if parts.query:
-            path = f"{path}?{parts.query}"
-        connection.request("GET", path, headers={"User-Agent": "proxy-rules"})
-        response = connection.getresponse()
-        if response.status != 200:
-            raise ConversionError(f"download failed: HTTP {response.status}")
-        return response.read().decode("utf-8")
-    except Exception as exc:  # pragma: no cover - surfaced in CLI only
-        if isinstance(exc, ConversionError):
-            raise
-        raise ConversionError(f"download failed: {exc}") from exc
-    finally:
-        connection.close()
+    path = parts.path or "/"
+    if parts.query:
+        path = f"{path}?{parts.query}"
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        connection = http.client.HTTPSConnection(
+            parts.netloc, timeout=DOWNLOAD_TIMEOUT_SECONDS
+        )
+        try:
+            connection.request("GET", path, headers={"User-Agent": "proxy-rules"})
+            response = connection.getresponse()
+            if response.status != 200:
+                message = f"download failed: HTTP {response.status}"
+                if response.status != 429 and not 500 <= response.status < 600:
+                    raise ConversionError(message)
+                raise OSError(message)
+            return response.read().decode("utf-8")
+        except (OSError, http.client.HTTPException) as exc:
+            if attempt == DOWNLOAD_ATTEMPTS:
+                raise ConversionError(
+                    f"download failed after {attempt} attempts: {exc}"
+                ) from exc
+            print(
+                f"download attempt {attempt}/{DOWNLOAD_ATTEMPTS} failed "
+                f"for {url}: {exc}; retrying",
+                file=sys.stderr,
+            )
+        finally:
+            connection.close()
+        time.sleep(attempt)
+    raise AssertionError("download attempts exhausted")
 
 
 def _write_text_if_changed(path: Path, text: str) -> bool:
