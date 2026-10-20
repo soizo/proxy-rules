@@ -59,6 +59,7 @@ DOMAIN-SUFFIX,tanx.com,DIRECT
 DOMAIN-SUFFIX,ucweb.com,DIRECT
 DOMAIN-SUFFIX,youku.com,DIRECT
 DOMAIN,h-adashx.ut.hzshudian.com,DIRECT
+DOMAIN-SUFFIX,iconfont.cn,DIRECT
 
 ; --- Tencent ---
 DOMAIN-SUFFIX,qq.com,DIRECT

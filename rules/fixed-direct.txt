@@ -45,6 +45,7 @@ DOMAIN-SUFFIX,tanx.com
 DOMAIN-SUFFIX,ucweb.com
 DOMAIN-SUFFIX,youku.com
 DOMAIN,h-adashx.ut.hzshudian.com
+DOMAIN-SUFFIX,iconfont.cn
 DOMAIN-SUFFIX,qq.com
 DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net
 DOMAIN-SUFFIX,open.kuaishouzt.com
