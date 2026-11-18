@@ -69,8 +69,8 @@ DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net,DIRECT
 DOMAIN-SUFFIX,open.kuaishouzt.com,DIRECT
 
 ; --- Chinese Classics / Research ---
-DOMAIN-SUFFIX,ctext.org,DIRECT
-DOMAIN-SUFFIX,library.ctext.org,DIRECT
+DOMAIN-SUFFIX,ctext.org,PROXY
+DOMAIN-SUFFIX,library.ctext.org,PROXY
 DOMAIN-SUFFIX,zi.tools,DIRECT
 DOMAIN-SUFFIX,homeinmists.com,DIRECT
 DOMAIN-SUFFIX,baike.com,DIRECT
@@ -108,5 +108,4 @@ DOMAIN-SUFFIX,news-edge.apple.com,PROXY
 DOMAIN-SUFFIX,nomfoundation.org,PROXY
 DOMAIN-SUFFIX,hannom-rcv.org,PROXY
 
-DOMAIN-SUFFIX,ctext.org,PROXY
 DOMAIN-SUFFIX,h-comic.com,PROXY
