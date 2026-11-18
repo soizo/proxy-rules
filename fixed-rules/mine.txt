@@ -107,3 +107,6 @@ DOMAIN-SUFFIX,news-edge.apple.com,PROXY
 ; --- Nom / Han-Nom research ---
 DOMAIN-SUFFIX,nomfoundation.org,PROXY
 DOMAIN-SUFFIX,hannom-rcv.org,PROXY
+
+DOMAIN-SUFFIX,ctext.org,PROXY
+DOMAIN-SUFFIX,h-comic.com,PROXY
