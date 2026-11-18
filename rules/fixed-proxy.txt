@@ -8,3 +8,5 @@ DOMAIN-SUFFIX,imap.gmail.com
 DOMAIN-SUFFIX,news-edge.apple.com
 DOMAIN-SUFFIX,nomfoundation.org
 DOMAIN-SUFFIX,hannom-rcv.org
+DOMAIN-SUFFIX,ctext.org
+DOMAIN-SUFFIX,h-comic.com
