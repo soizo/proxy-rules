@@ -20,6 +20,7 @@ const MODULE_PROVIDERS = {
   "module-proxy": "proxy.txt",
   "module-reject": "reject.txt",
 };
+const FALLBACK_RULE = /^(MATCH|FINAL)\s*,/i;
 
 function findProxyGroup(config) {
   const groups = Array.isArray(config && config["proxy-groups"])
@@ -72,7 +73,10 @@ function main(config, profileName) {
           : "REJECT";
       return `RULE-SET,${name},${policy}`;
     }),
-    ...rules,
+    ...rules.filter(
+      (rule) => !(typeof rule === "string" && FALLBACK_RULE.test(rule.trim())),
+    ),
+    `MATCH,${proxyGroup}`,
   ];
 
   return output;

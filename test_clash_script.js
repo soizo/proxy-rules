@@ -90,7 +90,22 @@ assert.deepStrictEqual(plain(output.rules.slice(0, 5)), [
   "RULE-SET,module-proxy,节点选择",
   "RULE-SET,module-reject,REJECT",
 ]);
-assert.deepStrictEqual(plain(output.rules.slice(5)), ["SUBSCRIPTION-RULE"]);
+assert.deepStrictEqual(plain(output.rules.slice(5)), [
+  "SUBSCRIPTION-RULE",
+  "MATCH,节点选择",
+]);
+
+const overriddenFallback = main(
+  {
+    rules: ["DOMAIN,example.com,DIRECT", "MATCH,DIRECT", "FINAL,DIRECT"],
+    "proxy-groups": [{ name: "Proxy", type: "select", proxies: ["DIRECT"] }],
+  },
+  "profile",
+);
+assert.deepStrictEqual(plain(overriddenFallback.rules.slice(5)), [
+  "DOMAIN,example.com,DIRECT",
+  "MATCH,Proxy",
+]);
 
 const empty = main({}, "profile");
 assert.deepStrictEqual(plain(empty["rule-providers"]), {
@@ -136,6 +151,7 @@ assert.deepStrictEqual(plain(empty.rules), [
   "RULE-SET,module-direct,DIRECT",
   "RULE-SET,module-proxy,GLOBAL",
   "RULE-SET,module-reject,REJECT",
+  "MATCH,GLOBAL",
 ]);
 
 console.log("clash-verge-script self-check passed");
